@@ -138,6 +138,7 @@ async def download_media(
     message: pyrogram.types.Message,
     media_types: List[str],
     file_formats: dict,
+    size_limit: int = 104857600,
 ):
     """
     Download media from Telegram.
@@ -164,6 +165,7 @@ async def download_media(
         Dictionary containing the list of file_formats
         to be downloaded for `audio`, `document` & `video`
         media types.
+    size_limit: int
 
     Returns
     -------
@@ -174,6 +176,13 @@ async def download_media(
         try:
             if message.media is None:
                 return message.id
+            if message.video.file_size > size_limit:
+                logger.warning(
+                    "Message[%d]: file size is greater than 100MB, skipping download.",
+                    message.id,
+                )
+                FAILED_IDS.append(message.id)
+                break
             for _type in media_types:
                 _media = getattr(message, _type, None)
                 if _media is None:
@@ -242,6 +251,7 @@ async def process_messages(
     messages: List[pyrogram.types.Message],
     media_types: List[str],
     file_formats: dict,
+    size_limit: int = 104857600,
 ) -> int:
     """
     Download media from Telegram.
@@ -265,6 +275,7 @@ async def process_messages(
         Dictionary containing the list of file_formats
         to be downloaded for `audio`, `document` & `video`
         media types.
+    size_limit: int
 
     Returns
     -------
@@ -273,7 +284,7 @@ async def process_messages(
     """
     message_ids = await asyncio.gather(
         *[
-            download_media(client, message, media_types, file_formats)
+            download_media(client, message, media_types, file_formats, size_limit)
             for message in messages
         ]
     )
@@ -334,10 +345,10 @@ async def begin_import(config: dict, pagination_limit: int) -> dict:
                 messages_list,
                 config["media_types"],
                 config["file_formats"],
+                config["size_limit"],
             )
             pagination_count = 0
-            messages_list = []
-            messages_list.append(message)
+            messages_list = [message]
             config["last_read_message_id"] = last_read_message_id
             update_config(config)
     if messages_list:
@@ -346,6 +357,7 @@ async def begin_import(config: dict, pagination_limit: int) -> dict:
             messages_list,
             config["media_types"],
             config["file_formats"],
+            config["size_limit"],
         )
 
     await client.stop()
