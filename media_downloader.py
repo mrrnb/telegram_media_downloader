@@ -38,9 +38,9 @@ def update_config(config: dict):
     config: dict
         Configuration to be written into config file.
     """
-    config["ids_to_retry"] = (
-        list(set(config["ids_to_retry"]) - set(DOWNLOADED_IDS)) + FAILED_IDS
-    )
+    # config["ids_to_retry"] = (
+    #     list(set(config["ids_to_retry"]) - set(DOWNLOADED_IDS)) + FAILED_IDS
+    # )
     with open("config.yaml", "w") as yaml_file:
         yaml.dump(config, yaml_file, default_flow_style=False)
     logger.info("Updated last read message_id to config file")
@@ -176,7 +176,7 @@ async def download_media(
         try:
             if message.media is None:
                 return message.id
-            if message.video.file_size > size_limit:
+            if hasattr(message, "video") and message.video and message.video.file_size > size_limit:
                 logger.warning(
                     "Message[%d]: file size is greater than 100MB, skipping download.",
                     message.id,

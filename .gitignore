@@ -62,3 +62,4 @@ video_*
 video_note/
 config.yaml
 config_*.yaml
+*.log
