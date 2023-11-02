@@ -2,7 +2,6 @@
 import asyncio
 import logging
 import os
-import random
 from typing import List, Optional, Tuple, Union
 
 import pyrogram
@@ -126,7 +125,7 @@ async def _get_media_meta(
         sub_dir = f"{_type}_{str(chat_id)}"
     datetime_name = "{}_{}.{}".format(
                 _type,
-                media_obj.date.strftime("%Y%m%d%H%m%S") + str(random.randint(100, 999)),  # type: ignore
+                media_obj.date.strftime("%Y%m%d%H%m%S"),  # type: ignore
                 file_format,
             )
     if _type in ["voice", "video_note"]:
