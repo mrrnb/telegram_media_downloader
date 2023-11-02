@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import random
 from typing import List, Optional, Tuple, Union
 
 import pyrogram
@@ -93,6 +94,8 @@ def _is_exist(file_path: str) -> bool:
 async def _get_media_meta(
     media_obj: Union[Audio, Document, Photo, Video, VideoNote, Voice],
     _type: str,
+    save_path: str = None,
+    chat_id: int = None,
 ) -> Tuple[str, Optional[str]]:
     """Extract file name and file id from media object.
 
@@ -102,7 +105,8 @@ async def _get_media_meta(
         Media object to be extracted.
     _type: str
         Type of media object.
-
+    save_path: str
+    chat_id: int
     Returns
     -------
     Tuple[str, Optional[str]]
@@ -113,22 +117,30 @@ async def _get_media_meta(
         file_format: Optional[str] = media_obj.mime_type.split("/")[-1]  # type: ignore
     else:
         file_format = None
-
+    save_dir = save_path if save_path else THIS_DIR
+    if not chat_id:
+        sub_dir = _type
+    elif chat_id < 0:
+        sub_dir = f"{_type}_{str(-chat_id)}"
+    else:
+        sub_dir = f"{_type}_{str(chat_id)}"
+    datetime_name = "{}_{}.{}".format(
+                _type,
+                media_obj.date.strftime("%Y%m%d%H%m%S") + str(random.randint(100, 999)),  # type: ignore
+                file_format,
+            )
     if _type in ["voice", "video_note"]:
         # pylint: disable = C0209
         file_format = media_obj.mime_type.split("/")[-1]  # type: ignore
         file_name: str = os.path.join(
-            THIS_DIR,
-            _type,
-            "{}_{}.{}".format(
-                _type,
-                media_obj.date.isoformat(),  # type: ignore
-                file_format,
-            ),
+            save_dir,
+            sub_dir,
+            datetime_name,
         )
     else:
         file_name = os.path.join(
-            THIS_DIR, _type, getattr(media_obj, "file_name", None) or ""
+            # save_dir, sub_dir, getattr(media_obj, "file_name", None) or ""
+            save_dir, sub_dir, datetime_name
         )
     return file_name, file_format
 
@@ -139,6 +151,8 @@ async def download_media(
     media_types: List[str],
     file_formats: dict,
     size_limit: int = 104857600,
+    save_path: str = None,
+    chat_id: int = None,
 ):
     """
     Download media from Telegram.
@@ -166,6 +180,7 @@ async def download_media(
         to be downloaded for `audio`, `document` & `video`
         media types.
     size_limit: int
+    save_path: str
 
     Returns
     -------
@@ -187,7 +202,7 @@ async def download_media(
                 _media = getattr(message, _type, None)
                 if _media is None:
                     continue
-                file_name, file_format = await _get_media_meta(_media, _type)
+                file_name, file_format = await _get_media_meta(_media, _type, save_path, chat_id)
                 if _can_download(_type, file_formats, file_format):
                     if _is_exist(file_name):
                         file_name = get_next_name(file_name)
@@ -252,6 +267,8 @@ async def process_messages(
     media_types: List[str],
     file_formats: dict,
     size_limit: int = 104857600,
+    save_path: str = None,
+    chat_id: int = None,
 ) -> int:
     """
     Download media from Telegram.
@@ -276,6 +293,8 @@ async def process_messages(
         to be downloaded for `audio`, `document` & `video`
         media types.
     size_limit: int
+    save_path: str
+    chat_id: int
 
     Returns
     -------
@@ -284,7 +303,7 @@ async def process_messages(
     """
     message_ids = await asyncio.gather(
         *[
-            download_media(client, message, media_types, file_formats, size_limit)
+            download_media(client, message, media_types, file_formats, size_limit, save_path, chat_id)
             for message in messages
         ]
     )
@@ -346,6 +365,8 @@ async def begin_import(config: dict, pagination_limit: int) -> dict:
                 config["media_types"],
                 config["file_formats"],
                 config["size_limit"],
+                config["save_path"],
+                config["chat_id"],
             )
             pagination_count = 0
             messages_list = [message]
@@ -358,6 +379,8 @@ async def begin_import(config: dict, pagination_limit: int) -> dict:
             config["media_types"],
             config["file_formats"],
             config["size_limit"],
+            config["save_path"],
+            config["chat_id"],
         )
 
     await client.stop()
