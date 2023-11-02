@@ -58,6 +58,7 @@ document/
 photo/
 voice/
 video/
+video_*
 video_note/
 config.yaml
 config_*.yaml
